@@ -13,7 +13,6 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { CategoryDetailPage } from './pages/CategoryDetailPage';
 import { FreePromptsPage } from './pages/FreePromptsPage';
 import { FavoritesPage } from './pages/FavoritesPage';
-import { AccountPanelPage } from './pages/AccountPanelPage';
 import { AboutPage } from './pages/AboutPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
@@ -106,9 +105,6 @@ export function App() {
               <Route path="/category/:slug" element={<CategoryDetailPage />} />
               <Route path="/free-prompts" element={<FreePromptsPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/panel" element={<AccountPanelPage />} />
-              <Route path="/admin" element={<AccountPanelPage />} />
-              <Route path="/owner-panel" element={<AccountPanelPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Shield, Disc as Discord, Lock } from 'lucide-react';
+import { Sparkles, Shield, Disc as Discord } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -133,20 +133,11 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Bar with Discreet Account Holder Lock Portal */}
+        {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-brand-border/60 flex flex-col sm:flex-row items-center justify-between text-xs text-brand-muted gap-4">
           <p>© {new Date().getFullYear()} PromptVista. All rights reserved.</p>
           <div className="flex items-center space-x-3">
             <span>Crafted for creators and prompt engineers</span>
-            {/* Discreet Account Holder Portal Lock Icon */}
-            <Link
-              to="/panel"
-              className="opacity-30 hover:opacity-100 transition-opacity p-1 text-brand-muted hover:text-brand-lavender"
-              title="Account Holder Portal"
-              aria-label="Account Holder Portal"
-            >
-              <Lock className="w-3.5 h-3.5" />
-            </Link>
           </div>
         </div>
       </div>

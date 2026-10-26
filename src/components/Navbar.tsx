@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Sparkles,
@@ -13,12 +13,10 @@ import {
   Menu,
   X,
   Search,
-  ShieldCheck,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { useFavorites } from '../hooks/useFavorites';
 import { AuthModal } from './AuthModal';
-import { isOwnerAuthenticated } from '../lib/auth';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -26,15 +24,6 @@ export const Navbar: React.FC = () => {
   const { favoritesCount } = useFavorites();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [isOwner, setIsOwner] = useState<boolean>(() => isOwnerAuthenticated());
-
-  useEffect(() => {
-    const handleAuthChange = () => {
-      setIsOwner(isOwnerAuthenticated());
-    };
-    window.addEventListener('owner_auth_change', handleAuthChange);
-    return () => window.removeEventListener('owner_auth_change', handleAuthChange);
-  }, []);
 
   const navLinks = [
     { name: 'Explore', path: '/explore', icon: Compass },
@@ -99,18 +88,6 @@ export const Navbar: React.FC = () => {
 
           {/* Right Action Icons & Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* When Owner is Logged In: Show Owner Panel Badge */}
-            {isOwner && (
-              <Link
-                to="/panel"
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-brand-violet/20 border border-brand-violet/40 text-brand-lavender text-xs font-bold hover:bg-brand-violet hover:text-white transition-all shadow-glow-sm"
-                title="Account Holder Control Panel"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Owner Panel</span>
-              </Link>
-            )}
-
             {/* Quick Explore / Search Link */}
             <Link
               to="/explore"
@@ -191,17 +168,6 @@ export const Navbar: React.FC = () => {
                 </Link>
               );
             })}
-
-            {isOwner && (
-              <Link
-                to="/panel"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-bold bg-brand-violet/20 border border-brand-violet/40 text-brand-lavender"
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Owner Control Panel</span>
-              </Link>
-            )}
 
             <div className="pt-2 border-t border-brand-border flex items-center justify-between">
               <button
