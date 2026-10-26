@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Sparkles,
@@ -13,10 +13,14 @@ import {
   Menu,
   X,
   Search,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { useFavorites } from '../hooks/useFavorites';
 import { AuthModal } from './AuthModal';
+import { getCurrentUser, signOutUser } from '../lib/userAuth';
+import type { UserProfile } from '../lib/userAuth';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -24,6 +28,33 @@ export const Navbar: React.FC = () => {
   const { favoritesCount } = useFavorites();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(getCurrentUser());
+    };
+    window.addEventListener('promptvista_user_auth_change', handleAuthChange);
+    return () => window.removeEventListener('promptvista_user_auth_change', handleAuthChange);
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await signOutUser();
+    setUserMenuOpen(false);
+  };
 
   const navLinks = [
     { name: 'Explore', path: '/explore', icon: Compass },
@@ -124,15 +155,60 @@ export const Navbar: React.FC = () => {
               )}
             </Link>
 
-            {/* Sign In / Account Modal Trigger */}
-            <button
-              type="button"
-              onClick={() => setAuthModalOpen(true)}
-              className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl border border-brand-border bg-brand-card hover:border-brand-violet/50 text-xs font-semibold text-brand-text transition-all hover:shadow-sm"
-            >
-              <User className="w-3.5 h-3.5 text-brand-violet" />
-              <span>Sign In</span>
-            </button>
+            {/* Sign In / User Profile Menu */}
+            {currentUser ? (
+              <div className="relative hidden sm:block" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="inline-flex items-center space-x-2 pl-2 pr-3 py-1.5 rounded-xl border border-brand-border bg-brand-card hover:border-brand-violet/50 text-xs font-semibold text-brand-text transition-all shadow-sm"
+                >
+                  <img
+                    src={currentUser.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=8b5cf6&color=fff'}
+                    alt={currentUser.name}
+                    className="w-5 h-5 rounded-full object-cover border border-brand-violet/40"
+                  />
+                  <span className="max-w-[100px] truncate">{currentUser.name}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-brand-muted" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-brand-card border border-brand-border shadow-2xl p-2 z-50 animate-fade-in space-y-1">
+                    <div className="px-3 py-2 border-b border-brand-border/60">
+                      <p className="text-xs font-bold text-brand-text truncate">{currentUser.name}</p>
+                      <p className="text-[11px] text-brand-muted truncate font-mono">{currentUser.email}</p>
+                    </div>
+
+                    <Link
+                      to="/favorites"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-brand-text hover:bg-brand-surface transition-colors"
+                    >
+                      <Heart className="w-3.5 h-3.5 text-rose-500" />
+                      <span>My Saved Prompts ({favoritesCount})</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex items-center space-x-2 px-3 py-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/10 w-full transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl border border-brand-border bg-brand-card hover:border-brand-violet/50 text-xs font-semibold text-brand-text transition-all hover:shadow-sm"
+              >
+                <User className="w-3.5 h-3.5 text-brand-violet" />
+                <span>Sign In / Gmail</span>
+              </button>
+            )}
 
             {/* Mobile Hamburger Toggle */}
             <button
@@ -169,18 +245,46 @@ export const Navbar: React.FC = () => {
               );
             })}
 
-            <div className="pt-2 border-t border-brand-border flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setAuthModalOpen(true);
-                }}
-                className="flex items-center space-x-2 text-sm text-brand-text font-semibold px-3 py-2 rounded-xl bg-brand-card border border-brand-border w-full justify-center"
-              >
-                <User className="w-4 h-4 text-brand-violet" />
-                <span>Account & Sync</span>
-              </button>
+            <div className="pt-2 border-t border-brand-border">
+              {currentUser ? (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-3 px-3 py-2 rounded-xl bg-brand-card border border-brand-border">
+                    <img
+                      src={currentUser.avatarUrl || 'https://ui-avatars.com/api/?name=User&background=8b5cf6&color=fff'}
+                      alt={currentUser.name}
+                      className="w-8 h-8 rounded-full border border-brand-violet/40"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-brand-text truncate">{currentUser.name}</p>
+                      <p className="text-[11px] text-brand-muted truncate font-mono">{currentUser.email}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleLogout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center justify-center space-x-2 text-xs text-rose-400 font-semibold px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 w-full"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setAuthModalOpen(true);
+                  }}
+                  className="flex items-center space-x-2 text-sm text-brand-text font-semibold px-3 py-2.5 rounded-xl bg-brand-card border border-brand-border w-full justify-center shadow-sm"
+                >
+                  <User className="w-4 h-4 text-brand-violet" />
+                  <span>Sign In with Gmail</span>
+                </button>
+              )}
             </div>
           </div>
         )}

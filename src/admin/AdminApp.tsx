@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Upload,
   Eye,
+  EyeOff,
   CheckCircle2,
   AlertTriangle,
   Sparkles,
@@ -34,6 +35,9 @@ import {
   loginOwner,
   logoutOwner,
   setMasterPasscode,
+  isCustomPasscodeSet,
+  resetPasscodeToDefault,
+  getMasterPasscode,
 } from '../lib/auth';
 import {
   getMonetizationConfig,
@@ -60,8 +64,15 @@ function AdminDashboardInner() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isOwnerAuthenticated());
   const [passcodeAttempt, setPasscodeAttempt] = useState('');
   const [passcodeError, setPasscodeError] = useState('');
+  const [showLoginPasscode, setShowLoginPasscode] = useState(false);
+  const [isCustomPass, setIsCustomPass] = useState(() => isCustomPasscodeSet());
+
+  // Passcode Change Modal State
   const [showPasscodeChangeModal, setShowPasscodeChangeModal] = useState(false);
+  const [currentPasscodeAttempt, setCurrentPasscodeAttempt] = useState('');
   const [newPasscode, setNewPasscode] = useState('');
+  const [confirmNewPasscode, setConfirmNewPasscode] = useState('');
+  const [showNewPasscode, setShowNewPasscode] = useState(false);
 
   // Active Tab: 'traffic' | 'manage' | 'add' | 'monetization'
   const [activeTab, setActiveTab] = useState<'traffic' | 'manage' | 'add' | 'monetization'>('traffic');
@@ -107,6 +118,7 @@ function AdminDashboardInner() {
       setPrompts(getAllPrompts());
       setIsAuthenticated(isOwnerAuthenticated());
       setMonetizationConfig(getMonetizationConfig());
+      setIsCustomPass(isCustomPasscodeSet());
     };
 
     const refreshTraffic = () => {
@@ -117,6 +129,7 @@ function AdminDashboardInner() {
 
     window.addEventListener('prompts_updated', refreshData);
     window.addEventListener('owner_auth_change', refreshData);
+    window.addEventListener('owner_passcode_changed', refreshData);
     window.addEventListener('monetization_config_updated', refreshData);
     window.addEventListener('promptvista_traffic_updated', refreshTraffic);
     window.addEventListener('storage', refreshTraffic);
@@ -127,6 +140,7 @@ function AdminDashboardInner() {
     return () => {
       window.removeEventListener('prompts_updated', refreshData);
       window.removeEventListener('owner_auth_change', refreshData);
+      window.removeEventListener('owner_passcode_changed', refreshData);
       window.removeEventListener('monetization_config_updated', refreshData);
       window.removeEventListener('promptvista_traffic_updated', refreshTraffic);
       window.removeEventListener('storage', refreshTraffic);
@@ -299,14 +313,39 @@ function AdminDashboardInner() {
   // Handle Change Passcode
   const handleChangePasscode = (e: React.FormEvent) => {
     e.preventDefault();
+    const currentStored = getMasterPasscode();
+    if (currentPasscodeAttempt.trim() !== currentStored) {
+      showToast('Current master passcode is incorrect.', 'error');
+      return;
+    }
     if (!newPasscode.trim() || newPasscode.length < 4) {
       showToast('New passcode must be at least 4 characters long.', 'error');
       return;
     }
-    setMasterPasscode(newPasscode);
+    if (newPasscode.trim() !== confirmNewPasscode.trim()) {
+      showToast('New passcode and confirmation do not match.', 'error');
+      return;
+    }
+    setMasterPasscode(newPasscode.trim());
+    setCurrentPasscodeAttempt('');
     setNewPasscode('');
+    setConfirmNewPasscode('');
     setShowPasscodeChangeModal(false);
-    showToast('Master passcode updated successfully!', 'success');
+    setIsCustomPass(true);
+    showToast('Master passcode updated successfully! Old passcode has been permanently disabled.', 'success');
+  };
+
+  // Handle Reset Passcode to Default
+  const handleResetToDefaultPasscode = () => {
+    if (window.confirm('Are you sure you want to reset the admin passcode back to default "admin123"?')) {
+      resetPasscodeToDefault();
+      setCurrentPasscodeAttempt('');
+      setNewPasscode('');
+      setConfirmNewPasscode('');
+      setShowPasscodeChangeModal(false);
+      setIsCustomPass(false);
+      showToast('Master passcode reset back to default: admin123', 'info');
+    }
   };
 
   // Handle Save Monetization Config
@@ -357,18 +396,26 @@ function AdminDashboardInner() {
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showLoginPasscode ? 'text' : 'password'}
                   required
                   value={passcodeAttempt}
                   onChange={(e) => setPasscodeAttempt(e.target.value)}
-                  placeholder="Enter master passcode (Default: admin123)"
-                  className="w-full px-4 py-3 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:border-brand-violet font-mono"
+                  placeholder={isCustomPass ? 'Enter your custom master passcode' : 'Enter master passcode (Default: admin123)'}
+                  className="w-full px-4 py-3 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:border-brand-violet font-mono pr-10"
                   autoFocus
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPasscode(!showLoginPasscode)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-white transition-colors"
+                  title={showLoginPasscode ? 'Hide passcode' : 'Show passcode'}
+                >
+                  {showLoginPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               {passcodeError && (
-                <p className="text-xs text-rose-400 mt-1.5 flex items-center space-x-1">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                <p className="text-xs text-rose-400 mt-1.5 flex items-start space-x-1">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   <span>{passcodeError}</span>
                 </p>
               )}
@@ -383,11 +430,18 @@ function AdminDashboardInner() {
             </button>
           </form>
 
-          <div className="pt-2 border-t border-brand-border/60 text-[11px] text-brand-muted space-y-1">
-            <p>
-              Default master passcode is <code className="text-brand-lavender font-mono px-1.5 py-0.5 rounded bg-brand-bg border border-brand-border">admin123</code>
-            </p>
-            <div className="pt-2">
+          <div className="pt-2 border-t border-brand-border/60 text-[11px] text-brand-muted space-y-2">
+            {isCustomPass ? (
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Custom Passcode Active (default admin123 is disabled)</span>
+              </div>
+            ) : (
+              <p>
+                Default master passcode is <code className="text-brand-lavender font-mono px-1.5 py-0.5 rounded bg-brand-bg border border-brand-border">admin123</code>
+              </p>
+            )}
+            <div className="pt-1">
               <a
                 href="/"
                 className="inline-flex items-center space-x-1 text-xs text-brand-lavender hover:underline"
@@ -1069,7 +1123,7 @@ function AdminDashboardInner() {
               </div>
 
               <div className="max-w-sm mx-auto lg:max-w-none">
-                <PromptCard prompt={previewPrompt} priority={true} />
+                <PromptCard prompt={previewPrompt} priority={true} isPreview={true} />
               </div>
 
               <div className="p-4 rounded-2xl bg-brand-surface border border-brand-border text-xs text-brand-muted space-y-2">
@@ -1425,40 +1479,101 @@ function AdminDashboardInner() {
         {/* ================================================================= */}
         {showPasscodeChangeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="relative w-full max-w-md bg-brand-card border border-brand-border rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="relative w-full max-w-md bg-brand-card border border-brand-border rounded-3xl p-6 shadow-2xl space-y-5">
               <div className="flex items-center space-x-3 text-brand-lavender">
-                <KeyRound className="w-5 h-5 text-brand-violet" />
-                <h3 className="font-bold text-base text-brand-text">Change Master Passcode</h3>
+                <div className="w-10 h-10 rounded-xl bg-brand-violet/20 border border-brand-violet/30 flex items-center justify-center text-brand-violet">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-brand-text">Change Master Passcode</h3>
+                  <p className="text-xs text-brand-muted">মাস্টার পাসকোড পরিবর্তন করুন</p>
+                </div>
               </div>
 
               <form onSubmit={handleChangePasscode} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-brand-muted mb-1.5">
-                    New Master Passcode (নতুন পাসকোড)
+                    Current Passcode (বর্তমান পাসকোড)
                   </label>
                   <input
                     type="password"
                     required
-                    value={newPasscode}
-                    onChange={(e) => setNewPasscode(e.target.value)}
-                    placeholder="Enter new secret passcode"
+                    value={currentPasscodeAttempt}
+                    onChange={(e) => setCurrentPasscodeAttempt(e.target.value)}
+                    placeholder="Enter current master passcode"
                     className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:border-brand-violet font-mono"
                   />
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-brand-muted">
+                      New Passcode (নতুন পাসকোড)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPasscode(!showNewPasscode)}
+                      className="text-[11px] text-brand-lavender hover:underline flex items-center space-x-1"
+                    >
+                      {showNewPasscode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showNewPasscode ? 'Hide' : 'Show'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showNewPasscode ? 'text' : 'password'}
+                    required
+                    value={newPasscode}
+                    onChange={(e) => setNewPasscode(e.target.value)}
+                    placeholder="Enter at least 4 characters"
+                    className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:border-brand-violet font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-brand-muted mb-1.5">
+                    Confirm New Passcode (নতুন পাসকোড নিশ্চিত করুন)
+                  </label>
+                  <input
+                    type={showNewPasscode ? 'text' : 'password'}
+                    required
+                    value={confirmNewPasscode}
+                    onChange={(e) => setConfirmNewPasscode(e.target.value)}
+                    placeholder="Re-type new master passcode"
+                    className="w-full px-4 py-2.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text focus:outline-none focus:border-brand-violet font-mono"
+                  />
+                </div>
+
+                {isCustomPass && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={handleResetToDefaultPasscode}
+                      className="text-xs text-rose-400 hover:text-rose-300 underline inline-flex items-center space-x-1"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset to default passcode (admin123)</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-3 pt-3 border-t border-brand-border">
                   <button
                     type="button"
-                    onClick={() => setShowPasscodeChangeModal(false)}
+                    onClick={() => {
+                      setShowPasscodeChangeModal(false);
+                      setCurrentPasscodeAttempt('');
+                      setNewPasscode('');
+                      setConfirmNewPasscode('');
+                    }}
                     className="px-4 py-2 text-xs font-semibold text-brand-muted hover:text-white"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-brand-violet hover:bg-brand-violet-hover text-white text-xs font-bold transition-all"
+                    className="px-5 py-2.5 rounded-xl bg-brand-violet hover:bg-brand-violet-hover text-white text-xs font-bold transition-all shadow-glow-sm"
                   >
-                    Save Passcode
+                    Save New Passcode
                   </button>
                 </div>
               </form>
