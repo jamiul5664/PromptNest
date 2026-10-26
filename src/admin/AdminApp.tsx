@@ -315,36 +315,46 @@ function AdminDashboardInner() {
     e.preventDefault();
     const currentStored = getMasterPasscode();
     if (currentPasscodeAttempt.trim() !== currentStored) {
-      showToast('Current master passcode is incorrect.', 'error');
+      showToast('বর্তমান মাস্টার পাসকোডটি ভুল। সঠিক পাসকোড দিন।', 'error');
       return;
     }
     if (!newPasscode.trim() || newPasscode.length < 4) {
-      showToast('New passcode must be at least 4 characters long.', 'error');
+      showToast('নতুন পাসকোড কমপক্ষে ৪ অক্ষরের হতে হবে।', 'error');
       return;
     }
     if (newPasscode.trim() !== confirmNewPasscode.trim()) {
-      showToast('New passcode and confirmation do not match.', 'error');
+      showToast('নতুন পাসকোড এবং কনফার্ম পাসকোড মিলছে না।', 'error');
       return;
     }
-    setMasterPasscode(newPasscode.trim());
+
+    const savedPasscode = newPasscode.trim();
+    setMasterPasscode(savedPasscode);
     setCurrentPasscodeAttempt('');
     setNewPasscode('');
     setConfirmNewPasscode('');
     setShowPasscodeChangeModal(false);
     setIsCustomPass(true);
-    showToast('Master passcode updated successfully! Old passcode has been permanently disabled.', 'success');
+
+    // Auto-lock admin panel immediately so user logs in with new passcode
+    logoutOwner();
+    setIsAuthenticated(false);
+    showToast('পাসকোড সফলভাবে পরিবর্তন হয়েছে! আপনার নতুন পাসকোড দিয়ে এখনই লগইন করুন।', 'success');
   };
 
   // Handle Reset Passcode to Default
   const handleResetToDefaultPasscode = () => {
-    if (window.confirm('Are you sure you want to reset the admin passcode back to default "admin123"?')) {
+    if (window.confirm('আপনি কি নিশ্চিত যে মাস্টার পাসকোড ডিফল্ট "admin123"-এ রিসেট করতে চান?')) {
       resetPasscodeToDefault();
       setCurrentPasscodeAttempt('');
       setNewPasscode('');
       setConfirmNewPasscode('');
       setShowPasscodeChangeModal(false);
       setIsCustomPass(false);
-      showToast('Master passcode reset back to default: admin123', 'info');
+
+      // Auto-lock admin panel immediately
+      logoutOwner();
+      setIsAuthenticated(false);
+      showToast('মাস্টার পাসকোড রিসেট করা হয়েছে: admin123। এখন এটি দিয়ে লগইন করুন।', 'info');
     }
   };
 

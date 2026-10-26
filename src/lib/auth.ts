@@ -96,11 +96,11 @@ export function loginOwner(passcode: string): { success: boolean; error?: string
   if (attempt === DEFAULT_PASSCODE && isCustomPasscodeSet()) {
     return {
       success: false,
-      error: 'The default passcode "admin123" is disabled because you set a new custom passcode. Please use your new passcode.',
+      error: 'ডিফল্ট পাসকোড "admin123" নিষ্ক্রিয় করা হয়েছে, কারণ আপনি নতুন কাস্টম পাসকোড সেট করেছেন। দয়া করে আপনার নতুন পাসকোডটি দিন। (Default admin123 is disabled)',
     };
   }
 
-  return { success: false, error: 'Incorrect master passcode. Access denied.' };
+  return { success: false, error: 'ভুল মাস্টার পাসকোড! সঠিক পাসকোডটি দিন। (Incorrect passcode)' };
 }
 
 /**
